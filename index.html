@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Car Racing: True or False</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: white;
+            overflow-x: hidden;
+            touch-action: none;
+        }
+        
+        h1, .game-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            max-height: 800px;
+            margin: 0 auto;
+            background-color: #1f2937;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .control-btn {
+            position: fixed;
+            bottom: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+            color: white;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 50;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(0.92);
+        }
+
+        #btn-left { left: 5%; }
+        #btn-right { right: 5%; }
+
+        #question-overlay {
+            position: absolute;
+            top: 10%;
+            left: 5%;
+            width: 90%;
+            background: rgba(17, 24, 39, 0.9);
+            border: 2px solid #fbbf24;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            z-index: 10;
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            font-weight: bold;
+            text-shadow: 1px 1px 3px black;
+        }
+
+        .feedback {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-transform: capitalize;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-shadow: 3px 3px 6px black;
+			font-family: 'Press Start 2P', cursive;
+        }
+        
+        .feedback.show {
+            opacity: 1;
+            transform: translate(-50%, -60%) scale(1.1);
+        }
+
+        textarea::-webkit-scrollbar { width: 8px; }
+        textarea::-webkit-scrollbar-track { background: #374151; }
+        textarea::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- MAIN MENU -->
+    <div id="main-menu" class="w-full max-w-md p-6 bg-gray-800 rounded-2xl shadow-2xl flex flex-col gap-4 mx-4 border border-gray-700">
+        <div class="text-center">
+            <h1 class="text-3xl text-green-500 leading-loose drop-shadow-md">CAR RACING:</h1>
+            <h1 class="text-m text-yellow-400 font-bold mb-4">"True or False"</h1>
+        </div>
+
+        <div>
+            <label class="block text-sm font-semibold text-gray-300 mb-2">Mode Permainan:</label>
+            <div class="flex gap-2">
+                <button id="mode-single" class="flex-1 bg-yellow-500 text-gray-900 font-bold py-2 rounded-lg border-2 border-yellow-400 shadow-md transition" onclick="setMode('single')">Tunggal</button>
+                <button id="mode-multi" class="flex-1 bg-gray-700 text-gray-300 font-bold py-2 rounded-lg border-2 border-transparent hover:bg-gray-600 transition" onclick="setMode('multi')">Tanding</button>
+            </div>
+        </div>
+
+        <div id="player-names" class="flex flex-col gap-3">
+            <input type="text" id="player1-name" placeholder="Pemain 1" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition">
+            <input type="text" id="player2-name" placeholder="Pemain 2" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition hidden">
+        </div>
+
+        <div>
+            <label class="block text-sm font-semibold text-gray-300 mb-2">Impor Soal:</label>
+            <textarea id="questions-input" rows="5" class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 resize-none transition">
+Nabi Muhammad Saw. lahir di Kota Mekkah=benar
+Wahyu pertama diturunkan di Gua Tsur=salah
+Kota Madinah dahulu bernama Yatsrib=benar
+Khalifah pertama adalah Abu Bakar=benar
+Ka'bah dibangun oleh Nabi Sulaiman a.s.=salah
+</textarea>
+            <p class="text-xs text-gray-500 mt-2"><b>Format:</b><br>- Pernyataan=benar/salah<br>- Sistem akan mengacak lima soal untuk setiap rondenya</p>
+        </div>
+
+        <button onclick="startGameMenu()" class="w-full mt-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition game-font text-sm">
+            MULAI
+        </button>
+        
+        <p id="error-msg" class="text-red-500 text-sm font-bold mt-2 hidden text-center"></p>
+
+        <div class="text-center mt-2">
+            <p class="text-xs text-gray-500">Dibuat oleh:<br><b>Dede Ardi Hikmatulloh, S.Th.I</b><br>© 2025 - Portal PAI Dasar</p>
+        </div>
+    </div>
+
+    <!-- GAME UI -->
+    <div id="game-ui" class="hidden w-full h-full flex justify-center">
+        <div id="game-container">
+            <canvas id="game-canvas"></canvas>
+            
+            <div id="hud">
+                <div id="hud-player" class="bg-gray-900 bg-opacity-80 px-4 py-2 rounded-lg text-yellow-400 border border-gray-700 shadow-md">P1</div>
+                <div id="hud-score" class="bg-gray-900 bg-opacity-80 px-4 py-2 rounded-lg text-green-400 border border-gray-700 shadow-md">Poin: 0</div>
+                <div id="hud-round" class="bg-gray-900 bg-opacity-80 px-4 py-2 rounded-lg text-blue-400 border border-gray-700 shadow-md">1/5</div>
+            </div>
+
+            <div id="question-overlay">
+                <span id="question-text">Pernyataan Soal...</span>
+            </div>
+
+            <div id="feedback-msg" class="feedback">BENAR!</div>
+
+            <!-- Mobile Controls -->
+            <div id="btn-left" class="control-btn" ontouchstart="moveCar(-1); return false;" onmousedown="moveCar(-1)">&#9664;</div>
+            <div id="btn-right" class="control-btn" ontouchstart="moveCar(1); return false;" onmousedown="moveCar(1)">&#9654;</div>
+        </div>
+    </div>
+
+    <!-- RESULT SCREEN -->
+    <div id="result-screen" class="hidden w-full max-w-md p-8 bg-gray-800 rounded-2xl shadow-2xl flex flex-col gap-6 mx-4 text-center border border-gray-700">
+        <h2 class="text-2xl text-yellow-400 mb-2 game-font drop-shadow-md" id="result-title">RONDE SELESAI</h2>
+        
+        <div id="single-result" class="hidden flex-col gap-2 bg-gray-900 p-6 rounded-xl border border-gray-700">
+            <p class="text-lg text-gray-300">Skor Akhir</p>
+            <p id="final-score" class="font-bold text-green-400 text-5xl drop-shadow-md">0</p>
+        </div>
+
+        <div id="multi-result" class="hidden flex-col gap-4 bg-gray-900 p-6 rounded-xl border border-gray-700">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+                <span id="res-p1-name" class="font-bold text-lg text-gray-200">P1</span>
+                <span id="res-p1-score" class="text-yellow-400 font-bold text-2xl">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span id="res-p2-name" class="font-bold text-lg text-gray-200">P2</span>
+                <span id="res-p2-score" class="text-yellow-400 font-bold text-2xl">0</span>
+            </div>
+            <h3 id="winner-text" class="text-xl text-green-400 font-bold mt-4 animate-bounce drop-shadow-md">PEMENANG: -</h3>
+        </div>
+
+        <button id="btn-next-turn" onclick="startPlayer2Turn()" class="hidden w-full mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg transition">
+            GILIRAN PEMAIN 2
+        </button>
+
+        <button onclick="backToMenu()" class="w-full mt-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition game-font text-sm">
+            BERANDA
+        </button>
+    </div>
+
+    <script>
+        // --- GAME CONFIG & STATE ---
+        let gameMode = 'single';
+        let p1Name = 'Pemain 1';
+        let p2Name = 'Pemain 2';
+        let allQuestions = [];
+        let p1Questions = [];
+        let p2Questions = [];
+        
+        let currentPlayer = 1;
+        let scores = { 1: 0, 2: 0 };
+        let currentQIndex = 0;
+        
+        // Canvas & Engine
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let width = 0;
+        let height = 0;
+        let sideWidth = 0;
+        let roadWidth = 0;
+        let laneWidth = 0;
+        let animationId;
+        let isGameRunning = false;
+
+        // Custom rounded rect helper
+        function fillRoundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Environment Entities
+        let trees = [];
+        let car = { lane: 1, actualLane: 1, y: 0, w: 0, h: 0, speed: 0, color: '#ef4444' };
+        let obstacles = [];
+        let answerItems = [];
+        let roadOffset = 0;
+        let speed = 4.0; // Sedikit lebih cepat untuk sensasi realistis
+        let baseSpeed = 4.5;
+
+        let frames = 0;
+        let activeQuestion = null;
+        let questionState = 'waiting';
+        let phaseTimer = 0;
+        let lastSpawnFrame = 0;
+        
+        // --- UI LOGIC ---
+        function setMode(mode) {
+            gameMode = mode;
+            const btnSingle = document.getElementById('mode-single');
+            const btnMulti = document.getElementById('mode-multi');
+            const p2Input = document.getElementById('player2-name');
+
+            if(mode === 'single') {
+                btnSingle.classList.replace('bg-gray-700', 'bg-yellow-500');
+                btnSingle.classList.replace('text-gray-300', 'text-gray-900');
+                btnSingle.classList.replace('border-transparent', 'border-yellow-400');
+                
+                btnMulti.classList.replace('bg-yellow-500', 'bg-gray-700');
+                btnMulti.classList.replace('text-gray-900', 'text-gray-300');
+                btnMulti.classList.replace('border-yellow-400', 'border-transparent');
+                
+                p2Input.classList.add('hidden');
+            } else {
+                btnMulti.classList.replace('bg-gray-700', 'bg-yellow-500');
+                btnMulti.classList.replace('text-gray-300', 'text-gray-900');
+                btnMulti.classList.replace('border-transparent', 'border-yellow-400');
+                
+                btnSingle.classList.replace('bg-yellow-500', 'bg-gray-700');
+                btnSingle.classList.replace('text-gray-900', 'text-gray-300');
+                btnSingle.classList.replace('border-yellow-400', 'border-transparent');
+                
+                p2Input.classList.remove('hidden');
+            }
+        }
+
+        function parseQuestions(rawText) {
+            const lines = rawText.split('\n');
+            let parsed = [];
+            for (let line of lines) {
+                let lastEq = line.lastIndexOf('=');
+                if (lastEq !== -1) {
+                    let q = line.substring(0, lastEq).trim();
+                    let a = line.substring(lastEq + 1).trim().toLowerCase();
+                    if (a === 'benar' || a === 'salah') {
+                        parsed.push({ text: q, isTrue: (a === 'benar') });
+                    }
+                }
+            }
+            return parsed;
+        }
+
+        function shuffleArray(array) {
+            let curId = array.length;
+            while (0 !== curId) {
+                let randId = Math.floor(Math.random() * curId);
+                curId -= 1;
+                let tmp = array[curId];
+                array[curId] = array[randId];
+                array[randId] = tmp;
+            }
+            return array;
+        }
+
+        function startGameMenu() {
+            p1Name = document.getElementById('player1-name').value || 'Pemain 1';
+            p2Name = document.getElementById('player2-name').value || 'Pemain 2';
+            
+            let rawQ = document.getElementById('questions-input').value;
+            allQuestions = parseQuestions(rawQ);
+            
+            const errorMsg = document.getElementById('error-msg');
+            if (allQuestions.length < 5) {
+                errorMsg.innerText = "Silakan, masukkan minimal lima soal yang valid!";
+                errorMsg.classList.remove('hidden');
+                return;
+            } else {
+                errorMsg.classList.add('hidden');
+            }
+
+            allQuestions = shuffleArray(allQuestions);
+
+            if (gameMode === 'single') {
+                p1Questions = allQuestions.slice(0, 5);
+            } else {
+                if (allQuestions.length >= 10) {
+                    p1Questions = allQuestions.slice(0, 5);
+                    p2Questions = allQuestions.slice(5, 10);
+                } else {
+                    p1Questions = allQuestions.slice(0, 5);
+                    let shuffledAgain = shuffleArray([...allQuestions]);
+                    p2Questions = shuffledAgain.slice(0, 5);
+                }
+            }
+
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+
+            scores = { 1: 0, 2: 0 };
+            currentPlayer = 1;
+            initGameSession();
+        }
+
+        // --- GAME ENGINE ---
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            width = canvas.width;
+            height = canvas.height;
+            
+            // Layout dimensi jalan yang lebih realistis (memberi ruang untuk pinggir jalan)
+            sideWidth = Math.max(40, width * 0.15); // Lebar bahu jalan
+            roadWidth = width - (sideWidth * 2);
+            laneWidth = roadWidth / 3;
+            
+            car.y = height - 140;
+            car.w = laneWidth * 0.55;
+            car.h = car.w * 2.1;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function initGameSession() {
+            resizeCanvas();
+            car.lane = 1; 
+            car.actualLane = 1; 
+            obstacles = [];
+            answerItems = [];
+            trees = [];
+            
+            // Populasikan pohon awal agar tidak kosong
+            for(let i=0; i<15; i++) {
+                spawnTree(Math.random() * height);
+            }
+
+            frames = 0;
+            currentQIndex = 0;
+            questionState = 'waiting';
+            phaseTimer = 120;
+            activeQuestion = null;
+            isGameRunning = true;
+            speed = baseSpeed;
+            lastSpawnFrame = 0;
+            
+            updateHUD();
+            scheduleNextQuestion();
+            
+            if (animationId) cancelAnimationFrame(animationId);
+            gameLoop();
+        }
+
+        function updateHUD() {
+            let name = currentPlayer === 1 ? p1Name : p2Name;
+            document.getElementById('hud-player').innerText = name;
+            document.getElementById('hud-score').innerText = `Poin: ${scores[currentPlayer]}`;
+            document.getElementById('hud-round').innerText = `${currentQIndex + 1}/5`;
+        }
+
+        function showFeedback(isCorrect, isCrash = false) {
+            const msg = document.getElementById('feedback-msg');
+            if(isCrash) {
+                msg.innerText = "-10";
+                msg.style.color = "#ef4444";
+            } else {
+                msg.innerText = isCorrect ? "+20" : "0";
+                msg.style.color = isCorrect ? "#4ade80" : "#ef4444";
+            }
+            msg.classList.remove('show');
+            void msg.offsetWidth; // trigger reflow
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 1200);
+        }
+
+        function scheduleNextQuestion() {
+            let qList = currentPlayer === 1 ? p1Questions : p2Questions;
+            if (currentQIndex >= 5) {
+                questionState = 'ending';
+                phaseTimer = 200; 
+                document.getElementById('question-overlay').style.display = 'none';
+                return;
+            }
+            updateHUD();
+            activeQuestion = qList[currentQIndex];
+            questionState = 'waiting';
+            phaseTimer = 150; 
+            document.getElementById('question-overlay').style.display = 'none';
+        }
+
+        function moveCar(direction) {
+            if (!isGameRunning) return;
+            car.lane += direction;
+            if (car.lane < 0) car.lane = 0;
+            if (car.lane > 2) car.lane = 2;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') moveCar(-1);
+            if (e.key === 'ArrowRight' || e.key === 'd') moveCar(1);
+        });
+
+        function spawnTree(startY = -100) {
+            let isLeft = Math.random() > 0.5;
+            let tx = isLeft ? Math.random() * (sideWidth - 20) : width - sideWidth + 10 + Math.random() * (sideWidth - 20);
+            let size = 25 + Math.random() * 25;
+            let hue = 100 + Math.random() * 40; // Nuansa hijau berbeda
+            trees.push({ x: tx, y: startY, size: size, hue: hue });
+        }
+
+        function spawnObstacle() {
+            let lanes = [0, 1, 2];
+            let lane = lanes[Math.floor(Math.random() * lanes.length)];
+            
+            let types = ['sedan', 'pickup', 'van'];
+            let colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#eab308', '#ec4899', '#f97316'];
+            
+            let type = types[Math.floor(Math.random() * types.length)];
+            let color = colors[Math.floor(Math.random() * colors.length)];
+            
+            let w = laneWidth * 0.55;
+            let h = w * (type === 'van' ? 2.3 : type === 'pickup' ? 2.2 : 1.9);
+            
+            obstacles.push({
+                lane: lane,
+                y: -h - 50,
+                type: type,
+                color: color,
+                w: w,
+                h: h
+            });
+        }
+
+        function spawnAnswers() {
+            let lanes = shuffleArray([0, 1, 2]);
+            let w = laneWidth * 0.45;
+            answerItems.push({ lane: lanes[0], y: -100, type: 'benar', isTrue: true, w: w, h: w });
+            answerItems.push({ lane: lanes[1], y: -100, type: 'salah', isTrue: false, w: w, h: w });
+        }
+
+        function checkCollision(r1, r2) {
+            return !(r2.x > r1.x + r1.w || 
+                     r2.x + r2.w < r1.x || 
+                     r2.y > r1.y + r1.h ||
+                     r2.y + r2.h < r1.y);
+        }
+
+        function update() {
+            if (!isGameRunning) return;
+            frames++;
+            roadOffset = (roadOffset + speed) % 80;
+
+            car.actualLane += (car.lane - car.actualLane) * 0.05; // Smooth steering
+
+            if (phaseTimer > 0) phaseTimer--;
+
+            if (questionState === 'waiting' && phaseTimer <= 0) {
+                questionState = 'question';
+                phaseTimer = 250; 
+                document.getElementById('question-text').innerText = activeQuestion.text;
+                document.getElementById('question-overlay').style.display = 'block';
+            } else if (questionState === 'question' && phaseTimer <= 0) {
+                questionState = 'answers';
+                spawnAnswers();
+            } else if (questionState === 'ending' && phaseTimer <= 0) {
+                endRound();
+                return;
+            }
+
+            // Spawn Environment (Trees)
+            if (frames % 10 === 0) spawnTree();
+
+            // Pindahkan pohon
+            for (let i = trees.length - 1; i >= 0; i--) {
+                trees[i].y += speed;
+                if (trees[i].y > height + 100) trees.splice(i, 1);
+            }
+
+            let safeToSpawn = (questionState === 'waiting') || (questionState === 'question' && phaseTimer > 120);
+            
+            // JEDA SPANW RINTANGAN DIPERLAMBAT
+            // Ganti 180 menjadi angka lebih besar (misal 300) agar jarak antar mobil lebih jauh
+            // Ganti 0.6 menjadi angka lebih besar (misal 0.8) agar peluang munculnya lebih kecil
+            if (safeToSpawn && (frames - lastSpawnFrame) > (300 / (speed*0.5)) && Math.random() > 0.8) {
+                spawnObstacle();
+                lastSpawnFrame = frames;
+            }
+
+            let carX = sideWidth + (car.actualLane * laneWidth) + (laneWidth - car.w) / 2;
+            let hitboxMargin = car.w * 0.15;
+            let carRect = { x: carX + hitboxMargin, y: car.y + hitboxMargin, w: car.w - hitboxMargin*2, h: car.h - hitboxMargin*2 };
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                // Mobil rintangan melaju ke depan, sehingga kita menyalipnya perlahan (speed * 0.6)
+                obs.y += speed * 0.55; 
+                
+                let obsX = sideWidth + obs.lane * laneWidth + (laneWidth - obs.w) / 2;
+                let obsRect = { x: obsX, y: obs.y, w: obs.w, h: obs.h };
+
+                if (checkCollision(carRect, obsRect)) {
+                    showFeedback(false, true);
+                    scores[currentPlayer] = Math.max(0, scores[currentPlayer] - 10);
+                    updateHUD();
+                    obstacles.splice(i, 1);
+                    
+                    canvas.style.transform = 'translate(5px, 5px)';
+                    canvas.style.filter = 'brightness(1.5)';
+                    setTimeout(() => {
+                        canvas.style.transform = 'translate(0, 0)';
+                        canvas.style.filter = 'none';
+                    }, 100);
+                } else if (obs.y > height) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            for (let i = answerItems.length - 1; i >= 0; i--) {
+                let ans = answerItems[i];
+                ans.y += speed;
+                let ansX = sideWidth + ans.lane * laneWidth + (laneWidth - ans.w) / 2;
+                let ansRect = { x: ansX, y: ans.y, w: ans.w, h: ans.h };
+
+                if (checkCollision(carRect, ansRect)) {
+                    let isCorrect = (ans.isTrue === activeQuestion.isTrue);
+                    if (isCorrect) {
+                        scores[currentPlayer] += 20;
+                        showFeedback(true);
+                    } else {
+                        showFeedback(false);
+                    }
+                    answerItems = [];
+                    currentQIndex++;
+                    scheduleNextQuestion();
+                    break;
+                } else if (ans.y > height) {
+                    if (i === 0) {
+                        showFeedback(false);
+                        answerItems = [];
+                        currentQIndex++;
+                        scheduleNextQuestion();
+                    }
+                }
+            }
+            
+            if(frames % 500 === 0 && speed < 9.0) speed += 0.4;
+        }
+
+        // Fungsi menggambar kaca trapesium untuk mobil
+        function drawGlass(ctx, x, y, w, h) {
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + w, y);
+            ctx.lineTo(x + w - 4, y + h);
+            ctx.lineTo(x + 4, y + h);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Glare
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.moveTo(x+2, y);
+            ctx.lineTo(x+w/2, y);
+            ctx.lineTo(x+w/2-2, y+h);
+            ctx.lineTo(x+6, y+h);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Fungsi utama untuk menggambar berbagai tipe mobil
+        function drawVehicle(ctx, x, y, w, h, color, type, isPlayer = false) {
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            fillRoundRect(ctx, x + 6, y + 6, w, h, 8);
+
+            // Ban
+            ctx.fillStyle = '#0a0a0a'; 
+            let tireW = w * 0.15, tireH = h * 0.18;
+            fillRoundRect(ctx, x - tireW/2 + 2, y + h*0.1, tireW, tireH, 2);
+            fillRoundRect(ctx, x + w - tireW/2 - 2, y + h*0.1, tireW, tireH, 2);
+            fillRoundRect(ctx, x - tireW/2 + 2, y + h*0.7, tireW, tireH, 2);
+            fillRoundRect(ctx, x + w - tireW/2 - 2, y + h*0.7, tireW, tireH, 2);
+
+            // Bodi Dasar
+            let bodyGrad = ctx.createLinearGradient(x, y, x + w, y);
+            bodyGrad.addColorStop(0, '#111');
+            bodyGrad.addColorStop(0.2, color);
+            bodyGrad.addColorStop(0.8, color);
+            bodyGrad.addColorStop(1, '#111');
+            ctx.fillStyle = bodyGrad;
+            fillRoundRect(ctx, x, y, w, h, 10);
+
+            // Spion
+            ctx.fillStyle = color;
+            fillRoundRect(ctx, x - 4, y + h*0.3, 5, 8, 2);
+            fillRoundRect(ctx, x + w - 1, y + h*0.3, 5, 8, 2);
+
+            // Detail berdasarkan tipe kendaraan
+            if (type === 'pickup') {
+                // Bak belakang (Bed)
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                fillRoundRect(ctx, x + 4, y + h*0.45, w - 8, h*0.5, 4);
+                // Atap
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                fillRoundRect(ctx, x + 4, y + h*0.15, w - 8, h*0.25, 6);
+                // Kaca Depan
+                drawGlass(ctx, x+4, y+h*0.15, w-8, -h*0.08); // Negatif = gambar ke atas
+                // Kaca Belakang
+                drawGlass(ctx, x+4, y+h*0.4, w-8, h*0.05);
+            } else if (type === 'van') {
+                // Atap Panjang
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                fillRoundRect(ctx, x + 4, y + h*0.15, w - 8, h*0.75, 6);
+                // Kaca Depan
+                drawGlass(ctx, x+4, y+h*0.15, w-8, -h*0.08);
+            } else { // sedan / sport player
+                // Atap
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                fillRoundRect(ctx, x + 6, y + h*0.3, w - 12, h*0.4, 6);
+                
+                // Kaca Depan
+                drawGlass(ctx, x+6, y+h*0.3, w-12, -h*0.12);
+                // Kaca Belakang
+                drawGlass(ctx, x+6, y+h*0.7, w-12, h*0.1);
+
+                if (isPlayer) {
+                    // Spoiler untuk mobil player
+                    ctx.fillStyle = '#111';
+                    fillRoundRect(ctx, x+2, y+h-12, w-4, 6, 2);
+                    fillRoundRect(ctx, x+10, y+h-18, 4, 6, 1);
+                    fillRoundRect(ctx, x+w-14, y+h-18, 4, 6, 1);
+                }
+            }
+
+            // Lampu
+            if (isPlayer) {
+                // Headlight menyorot
+                ctx.fillStyle = '#fff';
+                ctx.shadowColor = '#fef08a';
+                ctx.shadowBlur = 15;
+                fillRoundRect(ctx, x + 4, y + 2, w*0.25, h*0.06, 2);
+                fillRoundRect(ctx, x + w - 4 - w*0.25, y + 2, w*0.25, h*0.06, 2);
+                
+                // Sorotan Cahaya (Cone)
+                ctx.fillStyle = 'rgba(255, 255, 150, 0.15)';
+                ctx.beginPath();
+                ctx.moveTo(x+4, y+2);
+                ctx.lineTo(x - 20, y - 60);
+                ctx.lineTo(x+4+w*0.25 + 20, y - 60);
+                ctx.lineTo(x+4+w*0.25, y+2);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(x+w-4-w*0.25, y+2);
+                ctx.lineTo(x+w-4-w*0.25 - 20, y - 60);
+                ctx.lineTo(x+w-4 + 20, y - 60);
+                ctx.lineTo(x+w-4, y+2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0; // Reset
+                
+                // Taillight
+                ctx.fillStyle = '#ef4444';
+                fillRoundRect(ctx, x + 4, y + h - h*0.06 - 2, w*0.25, h*0.06, 2);
+                fillRoundRect(ctx, x + w - 4 - w*0.25, y + h - h*0.06 - 2, w*0.25, h*0.06, 2);
+            } else {
+                // Rintangan (Lalu lintas bergerak searah, kita di belakang mereka)
+                // Jadi kita melihat lampu belakang (Taillight) menyala sedang
+                ctx.fillStyle = '#dc2626'; // Merah gelap
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 5;
+                fillRoundRect(ctx, x + 4, y + h - h*0.06 - 2, w*0.25, h*0.06, 2);
+                fillRoundRect(ctx, x + w - 4 - w*0.25, y + h - h*0.06 - 2, w*0.25, h*0.06, 2);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function draw() {
+            // Background Rumput Dasar
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(0, 0, width, height);
+
+            // Gambar Jalan (Aspal)
+            ctx.fillStyle = '#27272a';
+            ctx.fillRect(sideWidth, 0, roadWidth, height);
+
+            // Tekstur aspal (Noise tipis)
+            ctx.fillStyle = 'rgba(255,255,255,0.02)';
+            for(let i=0; i<50; i++) {
+                ctx.fillRect(sideWidth + Math.random()*roadWidth, Math.random()*height, 2, 10);
+            }
+
+            // Garis pinggir kuning
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(sideWidth + 5, 0, 4, height);
+            ctx.fillRect(width - sideWidth - 9, 0, 4, height);
+
+            // Garis Marka Putus-putus
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            for (let i = 1; i < 3; i++) {
+                let lx = sideWidth + i * laneWidth;
+                for (let y = (roadOffset % 80) - 80; y < height; y += 80) {
+                    ctx.fillRect(lx - 2, y, 4, 35);
+                }
+            }
+
+            // Gambar Pohon/Semak di Pinggir Jalan
+            trees.forEach(tree => {
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.ellipse(tree.x, tree.y + tree.size * 0.8, tree.size, tree.size * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Daun berlapis
+                ctx.fillStyle = `hsl(${tree.hue}, 50%, 25%)`;
+                ctx.beginPath(); ctx.arc(tree.x - tree.size*0.3, tree.y, tree.size*0.8, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = `hsl(${tree.hue}, 55%, 35%)`;
+                ctx.beginPath(); ctx.arc(tree.x + tree.size*0.3, tree.y - tree.size*0.2, tree.size*0.7, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = `hsl(${tree.hue}, 60%, 45%)`;
+                ctx.beginPath(); ctx.arc(tree.x, tree.y - tree.size*0.4, tree.size*0.9, 0, Math.PI*2); ctx.fill();
+            });
+
+            // Gambar Item Jawaban (Jeriken)
+            for (let ans of answerItems) {
+                let x = sideWidth + ans.lane * laneWidth + (laneWidth - ans.w) / 2;
+                
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                fillRoundRect(ctx, x + 4, ans.y + 6, ans.w, ans.h, 5);
+
+                let jGrad = ctx.createLinearGradient(x, ans.y, x + ans.w, ans.y);
+                if (ans.type === 'benar') {
+                    jGrad.addColorStop(0, '#15803d'); jGrad.addColorStop(0.5, '#22c55e'); jGrad.addColorStop(1, '#166534');
+                } else {
+                    jGrad.addColorStop(0, '#991b1b'); jGrad.addColorStop(0.5, '#ef4444'); jGrad.addColorStop(1, '#7f1d1d');
+                }
+                
+                ctx.strokeStyle = jGrad;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(x + 10, ans.y + 10);
+                ctx.lineTo(x + 10, ans.y);
+                ctx.lineTo(x + ans.w - 10, ans.y);
+                ctx.lineTo(x + ans.w - 10, ans.y + 10);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#9ca3af';
+                ctx.fillRect(x + ans.w - 18, ans.y - 8, 12, 8);
+
+                ctx.fillStyle = jGrad;
+                fillRoundRect(ctx, x, ans.y + 8, ans.w, ans.h - 8, 6);
+                
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x + 5, ans.y + 13, ans.w - 10, ans.h - 18);
+
+                ctx.fillStyle = 'white';
+                ctx.font = '900 24px Inter';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'black';
+                ctx.shadowBlur = 5;
+                ctx.fillText(ans.type === 'benar' ? 'B' : 'S', x + ans.w/2, ans.y + 8 + (ans.h - 8)/2);
+                ctx.shadowBlur = 0; 
+            }
+
+            // Gambar Mobil Rintangan (Lalu lintas)
+            for (let obs of obstacles) {
+                let x = sideWidth + obs.lane * laneWidth + (laneWidth - obs.w) / 2;
+                drawVehicle(ctx, x, obs.y, obs.w, obs.h, obs.color, obs.type, false);
+            }
+
+            // Gambar Mobil Pemain
+            let carX = sideWidth + car.actualLane * laneWidth + (laneWidth - car.w) / 2;
+            drawVehicle(ctx, carX, car.y, car.w, car.h, car.color, 'sport', true);
+        }
+
+        function gameLoop() {
+            if(isGameRunning) {
+                update();
+                draw();
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // --- END GAME LOGIC ---
+        function endRound() {
+            isGameRunning = false;
+            document.getElementById('question-overlay').style.display = 'none';
+            document.getElementById('game-ui').classList.add('hidden');
+            const resultScreen = document.getElementById('result-screen');
+            resultScreen.classList.remove('hidden');
+
+            if (gameMode === 'single') {
+                document.getElementById('single-result').classList.remove('hidden');
+                document.getElementById('single-result').classList.add('flex');
+                document.getElementById('multi-result').classList.add('hidden');
+                document.getElementById('btn-next-turn').classList.add('hidden');
+                document.getElementById('final-score').innerText = scores[1];
+                document.getElementById('result-title').innerText = "SELESAI!";
+            } else {
+                if (currentPlayer === 1) {
+                    document.getElementById('single-result').classList.add('hidden');
+                    document.getElementById('multi-result').classList.add('hidden'); 
+                    document.getElementById('btn-next-turn').classList.remove('hidden');
+                    document.getElementById('result-title').innerText = `Ronde ${p1Name} Selesai!`;
+                } else {
+                    document.getElementById('single-result').classList.add('hidden');
+                    document.getElementById('multi-result').classList.remove('hidden');
+                    document.getElementById('multi-result').classList.add('flex');
+                    document.getElementById('btn-next-turn').classList.add('hidden');
+                    document.getElementById('result-title').innerText = "HASIL AKHIR:";
+                    
+                    document.getElementById('res-p1-name').innerText = p1Name;
+                    document.getElementById('res-p1-score').innerText = scores[1];
+                    document.getElementById('res-p2-name').innerText = p2Name;
+                    document.getElementById('res-p2-score').innerText = scores[2];
+
+                    let winnerText = "Permainan Seri!";
+                    if(scores[1] > scores[2]) winnerText = `Selamat, ${p1Name} menang!`;
+                    if(scores[2] > scores[1]) winnerText = `Selamat, ${p2Name} menang!`;
+                    document.getElementById('winner-text').innerText = winnerText;
+                }
+            }
+        }
+
+        function startPlayer2Turn() {
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            currentPlayer = 2;
+            initGameSession();
+        }
+
+        function backToMenu() {
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+        }
+
+        window.onload = resizeCanvas;
+    </script>
+</body>
+</html>
